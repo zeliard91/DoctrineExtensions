@@ -262,7 +262,8 @@ abstract class MappedEventSubscriber implements EventSubscriber
     protected function getEventAdapter(EventArgs $args)
     {
         $class = get_class($args);
-        if (preg_match('@Doctrine\\\([^\\\]+)@', $class, $m) && in_array($m[1], ['ODM', 'ORM'], true)) {
+        $class = str_replace('Redking\\ParseBundle\\Event', 'Doctrine\\Parse\\Event', $class);
+        if (preg_match('@Doctrine\\\([^\\\]+)@', $class, $m) && in_array($m[1], ['ODM', 'ORM', 'Parse'], true)) {
             if (!isset($this->adapters[$m[1]])) {
                 $adapterClass = $this->getNamespace().'\\Mapping\\Event\\Adapter\\'.$m[1];
                 if (!\class_exists($adapterClass)) {
