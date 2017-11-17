@@ -3,9 +3,9 @@
 namespace Gedmo\Mapping\Event\Adapter;
 
 use Doctrine\Common\EventArgs;
-use Doctrine\Common\Persistence\Event\LifecycleEventArgs;
 use Gedmo\Mapping\Event\AdapterInterface;
 use Gedmo\Exception\RuntimeException;
+use Redking\ParseBundle\Event\LifecycleEventArgs;
 use Redking\ParseBundle\ObjectManager;
 
 /**
@@ -99,7 +99,7 @@ class Parse implements AdapterInterface
      */
     public function getObjectState($uow, $object)
     {
-        return $uow->getEntityState($object);
+        return $uow->getObjectState($object);
     }
 
     /**
@@ -107,7 +107,7 @@ class Parse implements AdapterInterface
      */
     public function getObjectChangeSet($uow, $object)
     {
-        return $uow->getEntityChangeSet($object);
+        return $uow->getObjectChangeSet($object);
     }
 
     /**
@@ -115,7 +115,7 @@ class Parse implements AdapterInterface
      */
     public function getSingleIdentifierFieldName($meta)
     {
-        return $meta->getSingleIdentifierFieldName();
+        return $meta->getIdentifierFieldNames()[0];
     }
 
     /**
@@ -123,7 +123,7 @@ class Parse implements AdapterInterface
      */
     public function recomputeSingleObjectChangeSet($uow, $meta, $object)
     {
-        $uow->recomputeSingleEntityChangeSet($meta, $object);
+        $uow->recomputeSingleObjectChangeSet($meta, $object);
     }
 
     /**
@@ -131,7 +131,7 @@ class Parse implements AdapterInterface
      */
     public function getScheduledObjectUpdates($uow)
     {
-        return $uow->getScheduledEntityUpdates();
+        return $uow->getScheduleForUpdate();
     }
 
     /**
@@ -139,7 +139,7 @@ class Parse implements AdapterInterface
      */
     public function getScheduledObjectInsertions($uow)
     {
-        return $uow->getScheduledEntityInsertions();
+        return $uow->getScheduleForInsert();
     }
 
     /**
@@ -147,7 +147,7 @@ class Parse implements AdapterInterface
      */
     public function getScheduledObjectDeletions($uow)
     {
-        return $uow->getScheduledEntityDeletions();
+        return $uow->getScheduleForDelete();
     }
 
     /**
@@ -155,7 +155,7 @@ class Parse implements AdapterInterface
      */
     public function setOriginalObjectProperty($uow, $oid, $property, $value)
     {
-        $uow->setOriginalEntityProperty($oid, $property, $value);
+        $uow->setOriginalObjectProperty($oid, $property, $value);
     }
 
     /**
@@ -163,19 +163,19 @@ class Parse implements AdapterInterface
      */
     public function clearObjectChangeSet($uow, $oid)
     {
-        $uow->clearEntityChangeSet($oid);
+        $uow->clearObjectChangeSet($oid);
     }
 
     /**
      * Creates a ORM specific LifecycleEventArgs.
      *
-     * @param object                                $document
-     * @param \Doctrine\ODM\MongoDB\DocumentManager $documentManager
+     * @param object                                $object
+     * @param \Redking\ParseBundle\ObjectManager $objectManager
      *
      * @return \Doctrine\ODM\MongoDB\Event\LifecycleEventArgs
      */
-    public function createLifecycleEventArgsInstance($document, $documentManager)
+    public function createLifecycleEventArgsInstance($object, $objectManager)
     {
-        return new LifecycleEventArgs($document, $documentManager);
+        return new LifecycleEventArgs($object, $objectManager);
     }
 }
