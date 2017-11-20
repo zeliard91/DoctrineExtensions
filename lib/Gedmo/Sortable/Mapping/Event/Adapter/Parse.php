@@ -28,10 +28,11 @@ final class Parse extends BaseAdapter implements SortableAdapter
             }
         }
         $qb->sort($config['position'], 'desc');
-        $object = $qb->getQuery()->getSingleResult();
+        $object = $qb->getQuery()->getParseQuery()->first($om->isMasterRequest());
+        $fieldName = $om->getClassMetadata($config['useObjectClass'])->getNameOfField($config['position']);
 
         if ($object) {
-            return $meta->getReflectionProperty($config['position'])->getValue($object);
+            return $object->get($fieldName);
         }
 
         return -1;
