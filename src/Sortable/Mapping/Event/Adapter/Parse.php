@@ -64,7 +64,7 @@ final class Parse extends BaseAdapter implements SortableAdapter
             $value = $result->get($fieldName);
             $value+=$delta['delta'];
             $result->set($fieldName, $value);
-            $result->save();
+            $result->save($om->isMasterRequest());
         }
     }
 }
