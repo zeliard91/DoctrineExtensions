@@ -3,7 +3,7 @@
 namespace Gedmo\Tree\Strategy\ODM\MongoDB;
 
 use Gedmo\Tree\Strategy\AbstractMaterializedPath;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 use Gedmo\Mapping\Event\AdapterInterface;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
 

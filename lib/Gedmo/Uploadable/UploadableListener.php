@@ -2,7 +2,7 @@
 
 namespace Gedmo\Uploadable;
 
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\Mapping\ClassMetadata;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Doctrine\Common\EventArgs;
 use Gedmo\Mapping\Event\AdapterInterface;
@@ -23,7 +23,7 @@ use Gedmo\Uploadable\Mapping\Validator;
 use Gedmo\Uploadable\FileInfo\FileInfoInterface;
 use Gedmo\Uploadable\MimeType\MimeTypeGuesser;
 use Gedmo\Uploadable\MimeType\MimeTypeGuesserInterface;
-use Doctrine\Common\NotifyPropertyChanged;
+use Doctrine\Persistence\NotifyPropertyChanged;
 use Gedmo\Uploadable\Event\UploadablePreFileProcessEventArgs;
 use Gedmo\Uploadable\Event\UploadablePostFileProcessEventArgs;
 

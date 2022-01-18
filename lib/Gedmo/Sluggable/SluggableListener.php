@@ -6,7 +6,7 @@ use Doctrine\Common\EventArgs;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Gedmo\Sluggable\Handler\SlugHandlerWithUniqueCallbackInterface;
 use Gedmo\Sluggable\Mapping\Event\SluggableAdapter;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
 
 /**
@@ -508,7 +508,7 @@ class SluggableListener extends MappedEventSubscriber
     }
 
     /**
-     * @param \Doctrine\Common\Persistence\ObjectManager $om
+     * @param \Doctrine\Persistence\ObjectManager $om
      */
     private function manageFiltersBeforeGeneration(ObjectManager $om)
     {
@@ -532,7 +532,7 @@ class SluggableListener extends MappedEventSubscriber
     }
 
     /**
-     * @param \Doctrine\Common\Persistence\ObjectManager $om
+     * @param \Doctrine\Persistence\ObjectManager $om
      */
     private function manageFiltersAfterGeneration(ObjectManager $om)
     {
@@ -551,7 +551,7 @@ class SluggableListener extends MappedEventSubscriber
     /**
      * Retrieves a FilterCollection instance from the given ObjectManager.
      *
-     * @param \Doctrine\Common\Persistence\ObjectManager $om
+     * @param \Doctrine\Persistence\ObjectManager $om
      *
      * @throws \Gedmo\Exception\InvalidArgumentException
      *

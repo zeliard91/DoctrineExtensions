@@ -12,7 +12,7 @@
 namespace Tree\Fixture\Mock;
 
 use Gedmo\Tree\TreeListener;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 
 class TreeListenerMock extends TreeListener
 {

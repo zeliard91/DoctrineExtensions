@@ -4,7 +4,7 @@ namespace Gedmo\Tree;
 
 use Doctrine\Common\EventArgs;
 use Gedmo\Mapping\MappedEventSubscriber;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 
 /**
  * The tree listener handles the synchronization of

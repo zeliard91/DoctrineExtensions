@@ -5,7 +5,7 @@ namespace Gedmo\Uploadable\Mapping;
 use Gedmo\Exception\InvalidMappingException;
 use Gedmo\Exception\UploadableCantWriteException;
 use Gedmo\Exception\UploadableInvalidPathException;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\Mapping\ClassMetadata;
 
 /**
  * This class is used to validate mapping information

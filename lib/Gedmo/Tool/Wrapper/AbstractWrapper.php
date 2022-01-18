@@ -4,7 +4,7 @@ namespace Gedmo\Tool\Wrapper;
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ODM\MongoDB\DocumentManager;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 use Gedmo\Tool\WrapperInterface;
 use Gedmo\Exception\UnsupportedObjectManagerException;
 

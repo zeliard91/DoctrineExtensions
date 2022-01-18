@@ -12,7 +12,7 @@
 namespace Tree\Fixture\Mock;
 
 use Gedmo\Tree\Strategy\ODM\MongoDB\MaterializedPath;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 use Gedmo\Mapping\Event\AdapterInterface;
 
 class MaterializedPathMock extends MaterializedPath

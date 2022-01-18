@@ -5,7 +5,7 @@ namespace Gedmo;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\ORM\Mapping\Driver as DriverORM;
 use Doctrine\ODM\MongoDB\Mapping\Driver as DriverMongodbODM;
-use Doctrine\Common\Persistence\Mapping\Driver\MappingDriverChain;
+use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
 use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Annotations\CachedReader;
 use Doctrine\Common\Annotations\AnnotationReader;

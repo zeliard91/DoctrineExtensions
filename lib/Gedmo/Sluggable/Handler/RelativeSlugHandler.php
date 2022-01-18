@@ -2,12 +2,12 @@
 
 namespace Gedmo\Sluggable\Handler;
 
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 use Gedmo\Sluggable\SluggableListener;
 use Gedmo\Sluggable\Mapping\Event\SluggableAdapter;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
 use Gedmo\Exception\InvalidMappingException;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\Mapping\ClassMetadata;
 
 /**
 * Sluggable handler which should be used in order to prefix

@@ -40,10 +40,11 @@
     "require": {
         "php": ">=5.4",
         "behat/transliterator": "~1.0",
-        "doctrine/common": "~2.4"
+        "doctrine/common": "~2.4 || ^3.0"
     },
     "require-dev": {
-        "doctrine/mongodb-odm": "~1.0",
+        "doctrine/mongodb-odm": "~1.0 || ^2.0",
+        "doctrine/annotations": "^1.13",
         "doctrine/orm": ">=2.5.0",
         "doctrine/common": ">=2.5.0",
         "symfony/yaml": "~2.6|~3.0",

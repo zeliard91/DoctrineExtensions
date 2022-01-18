@@ -2,8 +2,8 @@
 
 namespace Gedmo\Sluggable\Handler;
 
-use Doctrine\Common\Persistence\ObjectManager;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\ObjectManager;
+use Doctrine\Persistence\Mapping\ClassMetadata;
 use Gedmo\Sluggable\SluggableListener;
 use Gedmo\Sluggable\Mapping\Event\SluggableAdapter;
 use Gedmo\Tool\Wrapper\AbstractWrapper;

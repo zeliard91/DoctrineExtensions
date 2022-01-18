@@ -172,7 +172,7 @@ class Parse implements AdapterInterface
      * @param object                                $object
      * @param \Redking\ParseBundle\ObjectManager $objectManager
      *
-     * @return \Doctrine\ODM\MongoDB\Event\LifecycleEventArgs
+     * @return LifecycleEventArgs
      */
     public function createLifecycleEventArgsInstance($object, $objectManager)
     {

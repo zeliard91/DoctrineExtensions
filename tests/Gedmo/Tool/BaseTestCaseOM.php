@@ -4,7 +4,7 @@ namespace Tool;
 
 // common
 use Doctrine\Common\EventManager;
-use Doctrine\Common\Persistence\Mapping\Driver\MappingDriver;
+use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 // orm specific
 use Doctrine\ORM\Mapping\DefaultQuoteStrategy;
 use Doctrine\ORM\Mapping\DefaultNamingStrategy;

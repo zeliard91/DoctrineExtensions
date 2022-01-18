@@ -2,8 +2,6 @@
 
 namespace Gedmo\Blameable;
 
-use Doctrine\Common\NotifyPropertyChanged;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Gedmo\AbstractTrackingListener;
 use Gedmo\Exception\InvalidArgumentException;
 use Gedmo\Timestampable\TimestampableListener;

@@ -4,7 +4,7 @@ namespace Gedmo\Tree\Strategy;
 
 use Gedmo\Tree\Strategy;
 use Gedmo\Tree\TreeListener;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\ObjectManager;
 use Doctrine\ODM\MongoDB\UnitOfWork as MongoDBUnitOfWork;
 use Gedmo\Mapping\Event\AdapterInterface;
 use Gedmo\Exception\RuntimeException;

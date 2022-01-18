@@ -4,7 +4,7 @@ namespace Gedmo\Sluggable\Handler;
 
 use Gedmo\Sluggable\SluggableListener;
 use Gedmo\Sluggable\Mapping\Event\SluggableAdapter;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\Mapping\ClassMetadata;
 
 /**
  * Sluggable handler interface is a common pattern for all

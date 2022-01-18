@@ -1,8 +1,8 @@
 <?php
 
-use Doctrine\Common\Persistence\Mapping\Driver\MappingDriver;
+use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 use Mapping\Fixture\Unmapped\Timestampable;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\Mapping\ClassMetadata;
 
 /**
 * These are mapping tests for tree extension
