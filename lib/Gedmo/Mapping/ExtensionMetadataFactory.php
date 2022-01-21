@@ -138,7 +138,7 @@ class ExtensionMetadataFactory
             foreach ($omDriver->getDrivers() as $namespace => $nestedOmDriver) {
                 $driver->addDriver($this->getDriver($nestedOmDriver), $namespace);
             }
-            if (version_compare(CommonLibVer::VERSION, '2.3.0', '>=') && $omDriver->getDefaultDriver() !== null) {
+            if ((!class_exists('\Doctrine\Common\Version') || version_compare(CommonLibVer::VERSION, '2.3.0', '>=')) && $omDriver->getDefaultDriver() !== null) {
                 $driver->setDefaultDriver($this->getDriver($omDriver->getDefaultDriver()));
             }
         } else {
