@@ -10,6 +10,7 @@ use Doctrine\Common\Cache\Psr6\CacheAdapter;
 use Doctrine\Common\EventSubscriber;
 use Doctrine\Persistence\ObjectManager;
 use Doctrine\Common\EventArgs;
+use Gedmo\Mapping\Driver\AttributeReader;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 /**
@@ -65,9 +66,9 @@ abstract class MappedEventSubscriber implements EventSubscriber
     private $annotationReader;
 
     /**
-     * @var \Doctrine\Common\Annotations\AnnotationReader
+     * @var Reader|AttributeReader|false|null
      */
-    private static $defaultAnnotationReader;
+    private static $defaultAnnotationReader = false;
 
     /**
      * Constructor
@@ -227,16 +228,14 @@ abstract class MappedEventSubscriber implements EventSubscriber
      */
     private function getDefaultAnnotationReader()
     {
-        if (null === self::$defaultAnnotationReader) {
-            $reader = new AnnotationReader();
-
-            if (class_exists(ArrayAdapter::class)) {
-                $reader = new PsrCachedReader($reader, new ArrayAdapter());
-            } elseif (class_exists(ArrayCache::class)) {
-                $reader = new PsrCachedReader($reader, CacheAdapter::wrap(new ArrayCache()));
+        if (false === self::$defaultAnnotationReader) {
+            if (class_exists(PsrCachedReader::class)) {
+                self::$defaultAnnotationReader = new PsrCachedReader(new AnnotationReader(), new ArrayAdapter());
+            } elseif (\PHP_VERSION_ID >= 80000) {
+                self::$defaultAnnotationReader = new AttributeReader();
+            } else {
+                self::$defaultAnnotationReader = null;
             }
-
-            self::$defaultAnnotationReader = $reader;
         }
 
         return self::$defaultAnnotationReader;

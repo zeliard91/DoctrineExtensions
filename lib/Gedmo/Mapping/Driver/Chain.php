@@ -67,27 +67,38 @@ class Chain implements Driver
         $this->defaultDriver = $driver;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function readExtendedMetadata($meta, array &$config)
     {
         foreach ($this->_drivers as $namespace => $driver) {
-            if (strpos($meta->name, $namespace) === 0) {
-                $driver->readExtendedMetadata($meta, $config);
+            if (0 === strpos($meta->getName(), $namespace)) {
+                $extendedMetadata = $driver->readExtendedMetadata($meta, $config);
 
-                return;
+                if (\is_array($extendedMetadata)) {
+                    $config = $extendedMetadata;
+                }
+
+                // @todo: In the next major release remove the assignment to `$extendedMetadata`, the previous conditional
+                // block, uncomment the following line and replace the following return statement.
+                // return $driver->readExtendedMetadata($meta, $config);
+                return $config;
             }
         }
 
         if (null !== $this->defaultDriver) {
-            $this->defaultDriver->readExtendedMetadata($meta, $config);
+            $extendedMetadata = $this->defaultDriver->readExtendedMetadata($meta, $config);
 
-            return;
+            if (\is_array($extendedMetadata)) {
+                $config = $extendedMetadata;
+            }
+
+            // @todo: In the next major release remove the assignment to `$extendedMetadata`, the previous conditional
+            // block, uncomment the following line and replace the following return statement.
+            // return $this->defaultDriver->readExtendedMetadata($meta, $config);
+            return $config;
         }
 
         // commenting it for customized mapping support, debugging of such cases might get harder
-        //throw new \Gedmo\Exception\UnexpectedValueException('Class ' . $meta->name . ' is not a valid entity or mapped super class.');
+        // throw new \Gedmo\Exception\UnexpectedValueException('Class ' . $meta->getName() . ' is not a valid entity or mapped super class.');
     }
 
     /**

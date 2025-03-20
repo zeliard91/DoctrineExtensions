@@ -21,7 +21,6 @@ class Annotation extends AbstractAnnotationDriver
     /**
      * Annotation to define that this object is uploadable
      */
-    const UPLOADABLES = 'Gedmo\\Mapping\\Annotation\\Uploadables';
     const UPLOADABLE = 'Gedmo\\Mapping\\Annotation\\Uploadable';
     const UPLOADABLE_FILE_MIME_TYPE = 'Gedmo\\Mapping\\Annotation\\UploadableFileMimeType';
     const UPLOADABLE_FILE_NAME = 'Gedmo\\Mapping\\Annotation\\UploadableFileName';
@@ -36,12 +35,7 @@ class Annotation extends AbstractAnnotationDriver
         $class = $this->getMetaReflectionClass($meta);
 
         // class annotations
-        if ($annot = $this->reader->getClassAnnotation($class, self::UPLOADABLES)) {
-            foreach ($annot->configurations as $uploadable) {
-                /* @var $uploadable \Gedmo\Mapping\Annotation\Uploadable */
-                $config[$uploadable->identifier] = $this->readUploadableMetadata($class, $uploadable, $meta);
-            }
-        } else if ($annot = $this->reader->getClassAnnotation($class, self::UPLOADABLE)) {
+        if ($annot = $this->reader->getClassAnnotation($class, self::UPLOADABLE)) {
             $config[$annot->identifier] = $this->readUploadableMetadata($class, $annot, $meta);
         }
 

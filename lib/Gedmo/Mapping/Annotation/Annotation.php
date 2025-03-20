@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Doctrine Behavioral Extensions package.
  * (c) Gediminas Morkevicius <gediminas.morkevicius@gmail.com> http://www.gediminasm.org
@@ -9,19 +11,9 @@
 
 namespace Gedmo\Mapping\Annotation;
 
-use Doctrine\Common\Annotations\Annotation;
-use Gedmo\Mapping\Annotation\Annotation as GedmoAnnotation;
-
 /**
- * TreePath annotation for Tree behavioral extension
- *
- * @Annotation
- *
- * @Target("PROPERTY")
- *
- * @author <rocco@roccosportal.com>
+ * @internal
  */
-#[\Attribute(\Attribute::TARGET_PROPERTY)]
-final class TreePathHash implements GedmoAnnotation
+interface Annotation
 {
 }
