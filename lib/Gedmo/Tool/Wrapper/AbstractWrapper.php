@@ -7,6 +7,7 @@ use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\Persistence\ObjectManager;
 use Gedmo\Tool\WrapperInterface;
 use Gedmo\Exception\UnsupportedObjectManagerException;
+use Redking\ParseBundle\ObjectManager as ParseBundleObjectManager;
 
 /**
  * Wraps entity or proxy for more convenient
@@ -61,6 +62,8 @@ abstract class AbstractWrapper implements WrapperInterface
             return new EntityWrapper($object, $om);
         } elseif ($om instanceof DocumentManager) {
             return new MongoDocumentWrapper($object, $om);
+        } elseif ($om instanceof ParseBundleObjectManager) {
+            return new ParseWrapper($object, $om);
         }
         throw new UnsupportedObjectManagerException('Given object manager is not managed by wrapper');
     }

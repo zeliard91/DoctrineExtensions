@@ -148,13 +148,14 @@ class LoggableListener extends MappedEventSubscriber
 
             $logEntry = $this->pendingLogEntryInserts[$oid];
             $logEntryMeta = $om->getClassMetadata(get_class($logEntry));
+            $dbFieldName = $logEntryMeta->getFieldMapping('objectId')['name'];
 
             $id = $wrapped->getIdentifier();
             $logEntryMeta->getReflectionProperty('objectId')->setValue($logEntry, $id);
             $uow->scheduleExtraUpdate($logEntry, array(
-                'objectId' => array(null, $id),
+                $dbFieldName => array(null, $id),
             ));
-            $ea->setOriginalObjectProperty($uow, spl_object_hash($logEntry), 'objectId', $id);
+            $ea->setOriginalObjectProperty($uow, spl_object_hash($logEntry), $dbFieldName, $id);
             unset($this->pendingLogEntryInserts[$oid]);
         }
         if ($this->pendingRelatedObjects && array_key_exists($oid, $this->pendingRelatedObjects)) {
