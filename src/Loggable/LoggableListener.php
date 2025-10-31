@@ -171,6 +171,7 @@ class LoggableListener extends MappedEventSubscriber
 
             $logEntry = $this->pendingLogEntryInserts[$oid];
             $logEntryMeta = $om->getClassMetadata(get_class($logEntry));
+            $dbFieldName = $logEntryMeta->getFieldMapping('objectId')['name'];
 
             $id = $wrapped->getIdentifier(false, true);
             $logEntryMeta->setFieldValue($logEntry, 'objectId', $id);
