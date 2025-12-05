@@ -2,6 +2,7 @@
 
 namespace Gedmo\Loggable\Mapping\Event\Adapter;
 
+use BackedEnum;
 use Gedmo\Loggable\Mapping\Event\LoggableAdapter;
 use Gedmo\Mapping\Event\Adapter\Parse as AdapterParse;
 use Parse\ParseObject;
@@ -100,9 +101,13 @@ class Parse extends AdapterParse implements LoggableAdapter
             ];
             foreach ($refClass->getProperties() as $property) {
                 if (!in_array($property->getName(), $excludedProperties)) {
+                    $newValue = $property->getValue($object);
+                    if ($newValue instanceof BackedEnum) {
+                        $newValue = $newValue->value;
+                    }
                     $changes[$property->getName()] = [
                         null,
-                        $property->getValue($object)
+                        $newValue
                     ];
                 }
             }
