@@ -76,6 +76,12 @@ class Parse extends AdapterParse implements LoggableAdapter
                 if (null !== $refObject) {
                     $_changes[1] = $refObject;
                 }
+                // case of reference to new object not yet managed, we fetch the new real object so it can be processed later
+                else {
+                    $refClass = new ReflectionClass($object);
+                    $rawValue = $refClass->getProperty($fieldName)->getValue($object);
+                    $_changes[1] = $rawValue;
+                }
             }
         }
 
