@@ -22,6 +22,7 @@ use Gedmo\Loggable\Mapping\Event\LoggableAdapter;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Gedmo\Tool\ActorProviderInterface;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Loggable listener
@@ -116,6 +117,8 @@ class LoggableListener extends MappedEventSubscriber
             $this->username = (string) $username->getUserIdentifier();
         } elseif (is_object($username) && method_exists($username, 'getUsername')) {
             $this->username = (string) $username->getUsername();
+        } elseif ($username instanceof UserInterface) {
+            $this->username = $username->getUserIdentifier();
         } elseif (is_object($username) && method_exists($username, '__toString')) {
             $this->username = $username->__toString();
         } else {
