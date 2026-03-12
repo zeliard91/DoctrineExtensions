@@ -6,6 +6,7 @@ use Doctrine\Common\EventArgs;
 use Gedmo\Mapping\MappedEventSubscriber;
 use Gedmo\Loggable\Mapping\Event\LoggableAdapter;
 use Gedmo\Tool\Wrapper\AbstractWrapper;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Loggable listener
@@ -70,6 +71,8 @@ class LoggableListener extends MappedEventSubscriber
             $this->username = $username;
         } elseif (is_object($username) && method_exists($username, 'getUsername')) {
             $this->username = (string) $username->getUsername();
+        } elseif ($username instanceof UserInterface) {
+            $this->username = $username->getUserIdentifier();
         } else {
             throw new \Gedmo\Exception\InvalidArgumentException("Username must be a string, or object should have method: getUsername");
         }
