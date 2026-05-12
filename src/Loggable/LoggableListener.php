@@ -99,6 +99,20 @@ class LoggableListener extends MappedEventSubscriber
     }
 
     /**
+     * LogEntries created in onFlush for ACTION_UPDATE that still need their `data`
+     * recomputed in postUpdate, after all preUpdate listeners (which may have
+     * mutated the source object via $object->setFoo(...) and called
+     * recomputeSingleObjectChangeSet) have run. Without this second pass the
+     * LogEntry only contains the changeset visible at onFlush time and misses
+     * any field set by a preUpdate listener.
+     *
+     * Mapping: source object spl_object_hash → LogEntry instance.
+     *
+     * @var array
+     */
+    protected $pendingLogEntryDataUpdates = array();
+
+    /**
      * Set username for identification
      *
      * If an actor provider is also provided, it will take precedence over this value.
@@ -135,6 +149,7 @@ class LoggableListener extends MappedEventSubscriber
             'onFlush',
             'loadClassMetadata',
             'postPersist',
+            'postUpdate',
         ];
     }
 
@@ -224,7 +239,10 @@ class LoggableListener extends MappedEventSubscriber
             $this->createLogEntry(LogEntryInterface::ACTION_CREATE, $object, $ea);
         }
         foreach ($ea->getScheduledObjectUpdates($uow) as $object) {
-            $this->createLogEntry(LogEntryInterface::ACTION_UPDATE, $object, $ea);
+            $logEntry = $this->createLogEntry(LogEntryInterface::ACTION_UPDATE, $object, $ea);
+            if (null !== $logEntry) {
+                $this->pendingLogEntryDataUpdates[spl_object_hash($object)] = $logEntry;
+            }
         }
         foreach ($ea->getScheduledObjectDeletions($uow) as $object) {
             $this->createLogEntry(LogEntryInterface::ACTION_REMOVE, $object, $ea);
@@ -280,6 +298,50 @@ class LoggableListener extends MappedEventSubscriber
         }
 
         return $this->username;
+    }
+
+    /**
+     * Re-reads the changeset of an updated loggable object after all preUpdate
+     * listeners have run. If new versioned fields appeared (typically because
+     * another listener mutated the object and forced a recomputeSingleObjectChangeSet),
+     * merge them into the LogEntry's `data` via scheduleExtraUpdate.
+     *
+     * @return void
+     */
+    public function postUpdate(EventArgs $args)
+    {
+        $ea = $this->getEventAdapter($args);
+        $object = $ea->getObject();
+        $oid = spl_object_hash($object);
+
+        if (!array_key_exists($oid, $this->pendingLogEntryDataUpdates)) {
+            return;
+        }
+
+        $logEntry = $this->pendingLogEntryDataUpdates[$oid];
+        unset($this->pendingLogEntryDataUpdates[$oid]);
+
+        $om = $ea->getObjectManager();
+        $uow = $om->getUnitOfWork();
+
+        $oldData = $logEntry->getData() ?? [];
+        $newData = $this->getObjectChangeSetData($ea, $object, $logEntry);
+
+        if (empty($newData)) {
+            return;
+        }
+
+        $mergedData = array_merge($oldData, $newData);
+
+        if ($mergedData === $oldData) {
+            return;
+        }
+
+        $logEntry->setData($mergedData);
+        $uow->scheduleExtraUpdate($logEntry, [
+            'data' => [$oldData, $mergedData],
+        ]);
+        $ea->setOriginalObjectProperty($uow, $logEntry, 'data', $mergedData);
     }
 
     /**
