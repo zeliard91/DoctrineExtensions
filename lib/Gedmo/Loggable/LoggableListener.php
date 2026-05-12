@@ -59,6 +59,20 @@ class LoggableListener extends MappedEventSubscriber
     protected $pendingRelatedObjects = array();
 
     /**
+     * LogEntries created in onFlush for ACTION_UPDATE that still need their `data`
+     * recomputed in postUpdate, after all preUpdate listeners (which may have
+     * mutated the source object via $object->setFoo(...) and called
+     * recomputeSingleObjectChangeSet) have run. Without this second pass the
+     * LogEntry only contains the changeset visible at onFlush time and misses
+     * any field set by a preUpdate listener.
+     *
+     * Mapping: source object spl_object_hash → LogEntry instance.
+     *
+     * @var array
+     */
+    protected $pendingLogEntryDataUpdates = array();
+
+    /**
      * Set username for identification
      *
      * @param mixed $username
@@ -87,6 +101,7 @@ class LoggableListener extends MappedEventSubscriber
             'onFlush',
             'loadClassMetadata',
             'postPersist',
+            'postUpdate',
         );
     }
 
@@ -210,11 +225,71 @@ class LoggableListener extends MappedEventSubscriber
             $this->createLogEntry(self::ACTION_CREATE, $object, $ea);
         }
         foreach ($ea->getScheduledObjectUpdates($uow) as $object) {
-            $this->createLogEntry(self::ACTION_UPDATE, $object, $ea);
+            $logEntry = $this->createLogEntry(self::ACTION_UPDATE, $object, $ea);
+            if ($logEntry !== null) {
+                // Remember this LogEntry so that postUpdate can re-read the changeset
+                // once all preUpdate listeners (and the bundle's recomputeSingleObjectChangeSet)
+                // have run, in case they brought new versioned fields into play.
+                $this->pendingLogEntryDataUpdates[spl_object_hash($object)] = $logEntry;
+            }
         }
         foreach ($ea->getScheduledObjectDeletions($uow) as $object) {
             $this->createLogEntry(self::ACTION_REMOVE, $object, $ea);
         }
+    }
+
+    /**
+     * Re-read the changeset of an updated loggable object after all preUpdate
+     * listeners have run. If new versioned fields appeared (typically because
+     * another listener mutated the object via $object->setFoo(...) and forced
+     * a recomputeSingleObjectChangeSet), merge them into the LogEntry's `data`
+     * via scheduleExtraUpdate — the LogEntry insert has already been queued
+     * with the initial data, so we need a follow-up update to enrich it.
+     *
+     * Reuses the same scheduleExtraUpdate mechanism already used by postPersist
+     * to fix up the LogEntry's `objectId` after the source insert generates it.
+     *
+     * @param EventArgs $args
+     *
+     * @return void
+     */
+    public function postUpdate(EventArgs $args)
+    {
+        $ea = $this->getEventAdapter($args);
+        $object = $ea->getObject();
+        $oid = spl_object_hash($object);
+
+        if (!array_key_exists($oid, $this->pendingLogEntryDataUpdates)) {
+            return;
+        }
+
+        $logEntry = $this->pendingLogEntryDataUpdates[$oid];
+        unset($this->pendingLogEntryDataUpdates[$oid]);
+
+        $om = $ea->getObjectManager();
+        $uow = $om->getUnitOfWork();
+
+        $oldData = $logEntry->getData() ?? array();
+        $newData = $this->getObjectChangeSetData($ea, $object, $logEntry);
+
+        if (empty($newData)) {
+            return;
+        }
+
+        // Merge the new fields on top of the data captured at onFlush time.
+        // Fields that already had a value keep the post-recompute one (which is
+        // also the value the source object was actually persisted with).
+        $mergedData = array_merge($oldData, $newData);
+
+        if ($mergedData === $oldData) {
+            return;
+        }
+
+        $logEntry->setData($mergedData);
+        $uow->scheduleExtraUpdate($logEntry, array(
+            'data' => array($oldData, $mergedData),
+        ));
+        $ea->setOriginalObjectProperty($uow, spl_object_hash($logEntry), 'data', $mergedData);
     }
 
     /**
