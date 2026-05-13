@@ -113,6 +113,23 @@ class LoggableListener extends MappedEventSubscriber
     protected $pendingLogEntryDataUpdates = array();
 
     /**
+     * LogEntries created in onFlush for ACTION_CREATE that still need their
+     * `data` recomputed in postFlush, after all postPersist listeners have
+     * run. Application postPersist listeners commonly trigger a NESTED
+     * $om->flush() after mutating the just-inserted object — under the
+     * Parse adapter the nested commit skips onFlush/postFlush at
+     * commitDepth > 1 (DoctrineParseBundle guard), so Gedmo never sees
+     * the post-insert mutation through its normal channel. We re-read
+     * the final state in postFlush of the outer commit and patch the
+     * CREATE LogEntry's data accordingly.
+     *
+     * Mapping: source object spl_object_hash → ['logEntry' => ..., 'object' => ..., 'ea' => ...].
+     *
+     * @var array
+     */
+    protected $pendingLogEntryCreateDataUpdates = array();
+
+    /**
      * Set username for identification
      *
      * If an actor provider is also provided, it will take precedence over this value.
@@ -150,6 +167,7 @@ class LoggableListener extends MappedEventSubscriber
             'loadClassMetadata',
             'postPersist',
             'postUpdate',
+            'postFlush',
         ];
     }
 
@@ -236,7 +254,14 @@ class LoggableListener extends MappedEventSubscriber
         $uow = $om->getUnitOfWork();
 
         foreach ($ea->getScheduledObjectInsertions($uow) as $object) {
-            $this->createLogEntry(LogEntryInterface::ACTION_CREATE, $object, $ea);
+            $logEntry = $this->createLogEntry(LogEntryInterface::ACTION_CREATE, $object, $ea);
+            if (null !== $logEntry) {
+                $this->pendingLogEntryCreateDataUpdates[spl_object_hash($object)] = [
+                    'logEntry' => $logEntry,
+                    'object' => $object,
+                    'ea' => $ea,
+                ];
+            }
         }
         foreach ($ea->getScheduledObjectUpdates($uow) as $object) {
             $logEntry = $this->createLogEntry(LogEntryInterface::ACTION_UPDATE, $object, $ea);
@@ -342,6 +367,93 @@ class LoggableListener extends MappedEventSubscriber
             'data' => [$oldData, $mergedData],
         ]);
         $ea->setOriginalObjectProperty($uow, $logEntry, 'data', $mergedData);
+    }
+
+    /**
+     * After the outer commit has fully completed, walk pending CREATE LogEntries
+     * and re-read versioned fields from the source object. Used to capture
+     * mutations performed by postPersist listeners (typically through a nested
+     * flush bypassing the normal onFlush hook under the Parse adapter).
+     *
+     * @return void
+     */
+    public function postFlush(EventArgs $args)
+    {
+        if (empty($this->pendingLogEntryCreateDataUpdates)) {
+            return;
+        }
+
+        $pending = $this->pendingLogEntryCreateDataUpdates;
+        $this->pendingLogEntryCreateDataUpdates = [];
+
+        $ea = $this->getEventAdapter($args);
+        $om = $ea->getObjectManager();
+
+        foreach ($pending as $entry) {
+            $logEntry = $entry['logEntry'];
+            $object = $entry['object'];
+
+            $meta = $om->getClassMetadata(get_class($object));
+            $config = $this->getConfiguration($om, $meta->name);
+            if (empty($config['versioned'])) {
+                continue;
+            }
+
+            $oldData = $logEntry->getData() ?? [];
+            $newData = $this->readCurrentVersionedData($ea, $object, $config['versioned']);
+
+            if (empty($newData)) {
+                continue;
+            }
+
+            $mergedData = array_merge($oldData, $newData);
+            if ($mergedData === $oldData) {
+                continue;
+            }
+
+            $logEntry->setData($mergedData);
+
+            // Nested flush limited to the LogEntry; under the Parse adapter this runs at
+            // commitDepth=2 and skips onFlush/postFlush, so no recursion. LogEntry is not Loggable.
+            $logEntryMeta = $om->getClassMetadata(get_class($logEntry));
+            $om->getUnitOfWork()->recomputeSingleObjectChangeSet($logEntryMeta, $logEntry);
+            $om->flush($logEntry);
+        }
+    }
+
+    /**
+     * Re-read current values of the given versioned fields from the source object
+     * via reflection. Applies the same normalization as getObjectChangeSetData.
+     *
+     * @return array
+     */
+    protected function readCurrentVersionedData(LoggableAdapter $ea, $object, array $versionedFields)
+    {
+        $om = $ea->getObjectManager();
+        $meta = $om->getClassMetadata(get_class($object));
+        $data = [];
+
+        foreach ($versionedFields as $field) {
+            if (!$meta->hasField($field) && !$meta->hasAssociation($field)) {
+                continue;
+            }
+            $refl = $meta->getReflectionProperty($field);
+            if (null === $refl) {
+                continue;
+            }
+            $value = $refl->getValue($object);
+
+            if ($value instanceof \BackedEnum) {
+                $value = $value->value;
+            } elseif ($meta->isSingleValuedAssociation($field) && is_object($value)) {
+                $wrapped = AbstractWrapper::wrap($value, $om);
+                $value = $wrapped->getIdentifier(false);
+            }
+
+            $data[$field] = $value;
+        }
+
+        return $data;
     }
 
     /**
