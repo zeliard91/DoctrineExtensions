@@ -49,7 +49,7 @@ abstract class AbstractLogEntry
         return $this->getObjectClass() . '['. $this->getObjectId() .'] - ' . $this->getAction();
     }
 
-    public function setCreatedAt(\DateTime $createdAt = null): static
+    public function setCreatedAt(?\DateTime $createdAt = null): static
     {
         $this->createdAt = $createdAt;
     
@@ -61,7 +61,7 @@ abstract class AbstractLogEntry
         return $this->createdAt;
     }
 
-    public function setUpdatedAt(\DateTime $updatedAt = null): static
+    public function setUpdatedAt(?\DateTime $updatedAt = null): static
     {
         $this->updatedAt = $updatedAt;
     
