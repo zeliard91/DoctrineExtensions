@@ -393,11 +393,22 @@ class LoggableListener extends MappedEventSubscriber
             return;
         }
 
-        $pending = $this->pendingLogEntryCreateDataUpdates;
-        $this->pendingLogEntryCreateDataUpdates = [];
-
         $ea = $this->getEventAdapter($args);
         $om = $ea->getObjectManager();
+
+        // The CREATE-LogEntry post-enrichment only matters for the Parse adapter,
+        // where a postPersist-driven nested flush bypasses onFlush at commitDepth>1.
+        // On ORM/ODM the standard flow already captures mutations and re-reading the
+        // changeset here would trip on associations that postPersist has not yet
+        // resolved (Wrapper::getIdentifier returning null on partially-flushed graphs).
+        if (!is_a($om, 'Redking\\ParseBundle\\ObjectManager')) {
+            $this->pendingLogEntryCreateDataUpdates = [];
+
+            return;
+        }
+
+        $pending = $this->pendingLogEntryCreateDataUpdates;
+        $this->pendingLogEntryCreateDataUpdates = [];
 
         foreach ($pending as $entry) {
             $logEntry = $entry['logEntry'];
