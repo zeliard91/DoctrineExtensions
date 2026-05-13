@@ -207,14 +207,24 @@ class LoggableListener extends MappedEventSubscriber
 
             $logEntry = $this->pendingLogEntryInserts[$oid];
             $logEntryMeta = $om->getClassMetadata(get_class($logEntry));
-            $dbFieldName = $logEntryMeta->getFieldMapping('objectId')['name'];
 
             $id = $wrapped->getIdentifier(false, true);
-            $logEntryMeta->setFieldValue($logEntry, 'objectId', $id);
-            $uow->scheduleExtraUpdate($logEntry, [
-                'objectId' => [null, $id],
-            ]);
-            $ea->setOriginalObjectProperty($uow, $logEntry, 'objectId', $id);
+            $logEntryMeta->getReflectionProperty('objectId')->setValue($logEntry, $id);
+
+            // ORM/ODM use scheduleExtraUpdate to patch the just-inserted LogEntry inline.
+            // The Parse adapter routes the changeset straight to the Parse Server which
+            // rejects attributes whose PHP name differs from the DB name (e.g. `objectId`
+            // is a reserved Parse field, mapped here to DB column `myObjectId`); fall back
+            // to a nested flush on that single LogEntry instead.
+            if (is_a($om, 'Redking\\ParseBundle\\ObjectManager')) {
+                $uow->recomputeSingleObjectChangeSet($logEntryMeta, $logEntry);
+                $om->flush($logEntry);
+            } else {
+                $uow->scheduleExtraUpdate($logEntry, [
+                    'objectId' => [null, $id],
+                ]);
+                $ea->setOriginalObjectProperty($uow, $logEntry, 'objectId', $id);
+            }
             unset($this->pendingLogEntryInserts[$oid]);
         }
         if ($this->pendingRelatedObjects && array_key_exists($oid, $this->pendingRelatedObjects)) {

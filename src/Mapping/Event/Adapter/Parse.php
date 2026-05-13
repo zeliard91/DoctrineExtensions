@@ -153,8 +153,9 @@ class Parse implements AdapterInterface
     /**
      * {@inheritdoc}
      */
-    public function setOriginalObjectProperty($uow, $oid, $property, $value)
+    public function setOriginalObjectProperty($uow, $object, $property, $value)
     {
+        $oid = is_object($object) ? spl_object_hash($object) : $object;
         $uow->setOriginalObjectProperty($oid, $property, $value);
     }
 
