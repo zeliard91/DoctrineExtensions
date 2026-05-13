@@ -25,6 +25,8 @@ use Gedmo\Tests\Tool\BaseTestCaseParse;
  * Integration tests for the Parse adapter of the Loggable extension.
  *
  * Backed by the Parse Server reachable through DOCTRINE_PARSE_* env variables.
+ *
+ * @group parse
  */
 final class LoggableParseTest extends BaseTestCaseParse
 {

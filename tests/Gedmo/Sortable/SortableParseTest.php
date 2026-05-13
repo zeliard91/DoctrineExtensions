@@ -18,6 +18,8 @@ use Gedmo\Tests\Tool\BaseTestCaseParse;
 
 /**
  * Integration tests for the Parse adapter of the Sortable extension.
+ *
+ * @group parse
  */
 final class SortableParseTest extends BaseTestCaseParse
 {
