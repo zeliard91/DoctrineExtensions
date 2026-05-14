@@ -29,6 +29,7 @@ use Gedmo\Mapping\Driver\AttributeReader;
 use Gedmo\Mapping\Driver\Chain;
 use Gedmo\Mapping\Driver\File as FileDriver;
 use Psr\Cache\CacheItemPoolInterface;
+use Redking\ParseBundle\Mapping\ClassMetadata as ParseClassMetadata;
 
 /**
  * The extension metadata factory is responsible for extension driver
@@ -130,7 +131,12 @@ class ExtensionMetadataFactory
 
                     $class = $this->objectManager->getClassMetadata($parentClass);
 
-                    assert($class instanceof DocumentClassMetadata || $class instanceof EntityClassMetadata || $class instanceof LegacyEntityClassMetadata);
+                    assert(
+                        $class instanceof DocumentClassMetadata
+                        || $class instanceof EntityClassMetadata
+                        || $class instanceof LegacyEntityClassMetadata
+                        || $class instanceof ParseClassMetadata
+                    );
 
                     $extendedMetadata = $this->driver->readExtendedMetadata($class, $config);
 

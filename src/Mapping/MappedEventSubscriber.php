@@ -29,6 +29,7 @@ use Gedmo\Mapping\Event\AdapterInterface;
 use Gedmo\Mapping\Event\ClockAwareAdapterInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Clock\ClockInterface;
+use Redking\ParseBundle\Mapping\ClassMetadata as ParseClassMetadata;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 /**
@@ -234,7 +235,12 @@ abstract class MappedEventSubscriber implements EventSubscriber
      */
     public function loadMetadataForObjectClass(ObjectManager $objectManager, $metadata)
     {
-        assert($metadata instanceof DocumentClassMetadata || $metadata instanceof EntityClassMetadata || $metadata instanceof LegacyEntityClassMetadata);
+        assert(
+            $metadata instanceof DocumentClassMetadata
+            || $metadata instanceof EntityClassMetadata
+            || $metadata instanceof LegacyEntityClassMetadata
+            || $metadata instanceof ParseClassMetadata
+        );
 
         $factory = $this->getExtensionMetadataFactory($objectManager);
 
