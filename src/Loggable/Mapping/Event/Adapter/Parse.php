@@ -30,8 +30,16 @@ class Parse extends AdapterParse implements LoggableAdapter
          */
         $om = $this->getObjectManager();
         $objectMeta = $om->getClassMetadata(get_class($object));
-        $identifierField = $this->getSingleIdentifierFieldName($objectMeta);
-        $objectId = $objectMeta->getReflectionProperty($identifierField)->getValue($object);
+        // Prefer the UnitOfWork identifier for a managed object (mirrors the ORM
+        // adapter): the reflected `id` property may be null on a partially-loaded
+        // object while the UoW still holds the real id.
+        $uow = $om->getUnitOfWork();
+        if ($uow->isInIdentityMap($object)) {
+            $objectId = $uow->getDocumentIdentifier($object);
+        } else {
+            $identifierField = $this->getSingleIdentifierFieldName($objectMeta);
+            $objectId = $objectMeta->getReflectionProperty($identifierField)->getValue($object);
+        }
 
         $qb = $om->createQueryBuilder($meta->name);
         $qb->field('objectId')->equals($objectId);

@@ -84,13 +84,14 @@ class ParseWrapper extends AbstractWrapper
     public function getIdentifier($single = true)
     {
         if (!$this->identifier) {
-            if ($this->object instanceof Proxy) {
-                $uow = $this->om->getUnitOfWork();
-                if ($uow->isInIdentityMap($this->object)) {
-                    $this->identifier = (string) $uow->getDocumentIdentifier($this->object);
-                } else {
-                    $this->initialize();
-                }
+            $uow = $this->om->getUnitOfWork();
+            // Prefer the UnitOfWork identifier for any managed object (mirrors the
+            // ORM EntityWrapper): the reflected `id` property may be null on a
+            // partially-loaded object while the UoW still holds the real id.
+            if ($uow->isInIdentityMap($this->object)) {
+                $this->identifier = (string) $uow->getDocumentIdentifier($this->object);
+            } elseif ($this->object instanceof Proxy) {
+                $this->initialize();
             }
             if (!$this->identifier) {
                 $this->identifier = (string) $this->getPropertyValue($this->meta->identifier);

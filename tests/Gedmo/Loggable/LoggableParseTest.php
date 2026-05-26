@@ -246,6 +246,45 @@ final class LoggableParseTest extends BaseTestCaseParse
         );
     }
 
+    /**
+     * Regression: when a managed object's reflected `id` property is null (as
+     * happened in production with a partially-loaded ReferenceOne under the
+     * 'doctrine.do_not_manage' hint), the Loggable Parse adapter must still
+     * resolve the identifier from the UnitOfWork — like the ORM adapter — so the
+     * LogEntry carries the real objectId, never null.
+     */
+    public function testUpdateLogUsesUnitOfWorkIdentifierWhenReflectedIdIsNull(): void
+    {
+        $logRepo = $this->om->getRepository(LogEntry::class);
+
+        $article = new Article();
+        $article->setTitle('Title');
+        $this->om->persist($article);
+        $this->om->flush();
+        $realId = $article->getId();
+        self::assertNotNull($realId);
+
+        // Simulate the production divergence: the object is still managed in the
+        // UoW (correct identifier) but its reflected `id` property is null.
+        $this->om->getClassMetadata(Article::class)
+            ->getReflectionProperty('id')
+            ->setValue($article, null);
+        self::assertTrue($this->om->getUnitOfWork()->isInIdentityMap($article));
+
+        // Trigger an UPDATE.
+        $article->setTitle('Updated');
+        $this->om->flush();
+        $this->om->clear();
+
+        $log = $logRepo->findOneBy(['version' => 2, 'objectId' => $realId]);
+        self::assertNotNull(
+            $log,
+            'UPDATE LogEntry must carry the real objectId from the UnitOfWork, not null.'
+        );
+        self::assertSame('update', $log->getAction());
+        self::assertSame(['title' => 'Updated'], $log->getData());
+    }
+
     protected function getUsedFixtures(): array
     {
         return [
