@@ -350,6 +350,15 @@ class LoggableListener extends MappedEventSubscriber
         $oid = spl_object_hash($object);
 
         if (!array_key_exists($oid, $this->pendingLogEntryDataUpdates)) {
+            // No LogEntry was scheduled for this object during onFlush. Under the
+            // Parse adapter this happens when the object's versioned changes are
+            // applied inside a postUpdate-triggered NESTED flush: the nested
+            // commit runs at commitDepth>1 and the DoctrineParseBundle guard
+            // skips onFlush/postFlush, so Gedmo never sees those changes through
+            // its normal channel. Create the missing UPDATE LogEntry here so the
+            // change is not lost from the audit trail.
+            $this->createNestedUpdateLogEntry($ea, $object);
+
             return;
         }
 
@@ -377,6 +386,36 @@ class LoggableListener extends MappedEventSubscriber
             'data' => [$oldData, $mergedData],
         ]);
         $ea->setOriginalObjectProperty($uow, $logEntry, 'data', $mergedData);
+    }
+
+    /**
+     * Create an UPDATE LogEntry for an object whose versioned changes were applied
+     * during a nested flush (Parse adapter, commitDepth>1) and therefore never
+     * went through onFlush. Limited to the Parse adapter; on ORM/ODM a missing
+     * pending entry simply means there is nothing to log.
+     *
+     * The new LogEntry is persisted and flushed on its own (it is not Loggable, so
+     * this nested flush does not recurse). The Parse adapter's per-object changeset
+     * deduplication prevents a duplicate entry when postUpdate runs again for the
+     * same already-logged changeset.
+     *
+     * @return void
+     */
+    protected function createNestedUpdateLogEntry(LoggableAdapter $ea, $object)
+    {
+        $om = $ea->getObjectManager();
+        if (!is_a($om, 'Redking\\ParseBundle\\ObjectManager')) {
+            return;
+        }
+
+        $logEntry = $this->createLogEntry(LogEntryInterface::ACTION_UPDATE, $object, $ea);
+        if (null === $logEntry) {
+            return;
+        }
+
+        $logEntryMeta = $om->getClassMetadata(get_class($logEntry));
+        $om->getUnitOfWork()->recomputeSingleObjectChangeSet($logEntryMeta, $logEntry);
+        $om->flush($logEntry);
     }
 
     /**

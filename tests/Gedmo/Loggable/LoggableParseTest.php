@@ -285,6 +285,72 @@ final class LoggableParseTest extends BaseTestCaseParse
         self::assertSame(['title' => 'Updated'], $log->getData());
     }
 
+    /**
+     * Regression: a postUpdate listener that mutates a versioned field and
+     * triggers a NESTED flush (which under Parse runs at commitDepth>1 and skips
+     * onFlush) must still have that change recorded. The pending UPDATE LogEntry
+     * was already finalized by the first postUpdate, so the nested change would
+     * otherwise be lost — postUpdate must create a fresh UPDATE LogEntry for it.
+     *
+     * Mirrors the production "renseigner_resultat_visite" flow where
+     * ActionEventSubscriber::onStatutDone updates the Salarie inside a nested
+     * flush after the outer LogEntry was already written.
+     */
+    public function testPostUpdateNestedFlushMutationsAreVersioned(): void
+    {
+        $mutator = new class () implements EventSubscriber {
+            public bool $fired = false;
+
+            public function getSubscribedEvents(): array
+            {
+                return ['postUpdate'];
+            }
+
+            public function postUpdate(EventArgs $args): void
+            {
+                $object = $args->getObject();
+                if (!$object instanceof EnumArticle || $this->fired) {
+                    return;
+                }
+                if (Status::Published !== $object->getStatus()) {
+                    $this->fired = true;
+                    $object->setStatus(Status::Published);
+                    // Nested flush — under Parse this runs at commitDepth=2 and
+                    // skips onFlush, so the status change would be lost from the
+                    // audit trail without the postUpdate create-if-missing hook.
+                    $args->getObjectManager()->flush($object);
+                }
+            }
+        };
+        $this->om->getEventManager()->addEventSubscriber($mutator);
+
+        $logRepo = $this->om->getRepository(LogEntry::class);
+
+        $article = new EnumArticle();
+        $article->setTitle('Hello');
+        $article->setStatus(Status::Draft);
+        $this->om->persist($article);
+        $this->om->flush();
+
+        // Trigger an UPDATE; the postUpdate listener flips status via a nested flush.
+        $article->setTitle('Goodbye');
+        $this->om->flush();
+        $this->om->clear();
+
+        $logs = $logRepo->findBy(['objectId' => $article->getId()], ['version' => 'ASC']);
+        $data = [];
+        foreach ($logs as $log) {
+            if ('update' === $log->getAction()) {
+                $data = array_merge($data, $log->getData() ?? []);
+            }
+        }
+
+        self::assertArrayHasKey('title', $data, 'onFlush update field must be recorded.');
+        self::assertSame('Goodbye', $data['title']);
+        self::assertArrayHasKey('status', $data, 'Nested-flush versioned change must be recorded.');
+        self::assertSame(Status::Published->value, $data['status']);
+    }
+
     protected function getUsedFixtures(): array
     {
         return [
