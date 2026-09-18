@@ -6,6 +6,8 @@ use BackedEnum;
 use Gedmo\Loggable\Mapping\Event\LoggableAdapter;
 use Gedmo\Mapping\Event\Adapter\Parse as AdapterParse;
 use Parse\ParseObject;
+use Redking\ParseBundle\Mapping\ClassMetadata;
+use Redking\ParseBundle\Types\Type;
 use Redking\ParseBundle\UnitOfWork;
 use ReflectionClass;
 
@@ -98,6 +100,7 @@ class Parse extends AdapterParse implements LoggableAdapter
          * For inserted objects we return all the properties
          */
         if ($object->getId() === null && empty($changes)) {
+            $meta = $this->getObjectManager()->getClassMetadata(get_class($object));
             $refClass = new ReflectionClass($object);
             $excludedProperties = [
                 'id',
@@ -115,7 +118,7 @@ class Parse extends AdapterParse implements LoggableAdapter
                     }
                     $changes[$property->getName()] = [
                         null,
-                        $newValue
+                        $this->encryptIfNeeded($meta, $property->getName(), $newValue)
                     ];
                 }
             }
@@ -131,5 +134,34 @@ class Parse extends AdapterParse implements LoggableAdapter
         }
 
         return $changes;
+    }
+
+    /**
+     * Encrypts the value of an `encrypted_string` field read straight off the PHP object.
+     *
+     * The changeset the UnitOfWork computes already holds the ciphertext, produced by
+     * applyChangesToParseObject(); but the branch above rebuilds the changeset by reflection,
+     * and a PHP property holds the cleartext — that is the whole point of the type. Logging it
+     * as-is would write passwords in clear into Gedmo_LogEntry, which is exactly what encrypting
+     * the field is meant to prevent.
+     *
+     * The IV is random, so this is not the very ciphertext stored in Parse; it is a different
+     * encryption of the same value, and decrypts to the same cleartext with the same key.
+     *
+     * Public because LoggableListener::readCurrentVersionedData() also re-reads versioned fields
+     * by reflection and calls this when the adapter provides it.
+     *
+     * @param ClassMetadata $meta
+     * @param mixed         $value
+     *
+     * @return mixed
+     */
+    public function encryptIfNeeded($meta, string $field, $value)
+    {
+        if (null === $value || !$meta->hasField($field) || Type::ENCRYPTED_STRING !== $meta->getTypeOfField($field)) {
+            return $value;
+        }
+
+        return Type::getType(Type::ENCRYPTED_STRING)->convertToDatabaseValue($value);
     }
 }

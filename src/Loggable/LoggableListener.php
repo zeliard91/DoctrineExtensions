@@ -485,6 +485,9 @@ class LoggableListener extends MappedEventSubscriber
      * Re-read current values of the given versioned fields from the source object
      * via reflection. Applies the same normalization as getObjectChangeSetData.
      *
+     * Reflection hands back the cleartext of an encrypted field, so the value goes through the
+     * adapter when it knows how to encrypt it — see the Parse adapter's encryptIfNeeded().
+     *
      * @return array
      */
     protected function readCurrentVersionedData(LoggableAdapter $ea, $object, array $versionedFields)
@@ -508,6 +511,10 @@ class LoggableListener extends MappedEventSubscriber
             } elseif ($meta->isSingleValuedAssociation($field) && is_object($value)) {
                 $wrapped = AbstractWrapper::wrap($value, $om);
                 $value = $wrapped->getIdentifier(false);
+            }
+
+            if (method_exists($ea, 'encryptIfNeeded')) {
+                $value = $ea->encryptIfNeeded($meta, $field, $value);
             }
 
             $data[$field] = $value;

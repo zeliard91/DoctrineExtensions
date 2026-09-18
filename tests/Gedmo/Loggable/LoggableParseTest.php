@@ -17,9 +17,12 @@ use Doctrine\Common\EventSubscriber;
 use Gedmo\Loggable\LoggableListener;
 use Gedmo\Loggable\ParseObject\LogEntry;
 use Gedmo\Tests\Loggable\Fixture\Parse\Article;
+use Gedmo\Tests\Loggable\Fixture\Parse\EncryptedArticle;
 use Gedmo\Tests\Loggable\Fixture\Parse\EnumArticle;
 use Gedmo\Tests\Loggable\Fixture\Parse\Status;
 use Gedmo\Tests\Tool\BaseTestCaseParse;
+use Redking\ParseBundle\Security\EncryptionService;
+use Redking\ParseBundle\Types\EncryptedStringType;
 
 /**
  * Integration tests for the Parse adapter of the Loggable extension.
@@ -351,10 +354,51 @@ final class LoggableParseTest extends BaseTestCaseParse
         self::assertSame(Status::Published->value, $data['status']);
     }
 
+    /**
+     * An `encrypted_string` field must never reach the log entries in clear.
+     *
+     * The UnitOfWork encrypts it when it computes the changeset, so the update path is covered by
+     * construction; the create path is not, because the Parse adapter rebuilds the changeset of a
+     * new object by reflection — and a PHP property holds the cleartext, that being the whole
+     * point of the type.
+     */
+    public function testLogsAnEncryptedFieldEncrypted(): void
+    {
+        $encryption = new EncryptionService('a-test-encryption-key', 'a-test-hmac-key');
+        EncryptedStringType::setEncryptionService($encryption);
+
+        $logRepo = $this->om->getRepository(LogEntry::class);
+
+        $article = new EncryptedArticle();
+        $article->setTitle('Title');
+        $article->setSecret('s3cret-on-create');
+        $this->om->persist($article);
+        $this->om->flush();
+
+        $article->setSecret('s3cret-on-update');
+        $this->om->flush();
+
+        $logged = [];
+        foreach ($logRepo->findAll() as $logEntry) {
+            $logged[$logEntry->getAction()] = $logEntry->getData();
+        }
+
+        static::assertArrayHasKey('create', $logged);
+        static::assertArrayHasKey('update', $logged);
+
+        static::assertNotSame('s3cret-on-create', $logged['create']['secret'], 'the creation must not be logged in clear');
+        static::assertSame('s3cret-on-create', $encryption->decrypt($logged['create']['secret']));
+        static::assertSame('s3cret-on-update', $encryption->decrypt($logged['update']['secret']));
+
+        // A field that is not encrypted must stay readable.
+        static::assertSame('Title', $logged['create']['title']);
+    }
+
     protected function getUsedFixtures(): array
     {
         return [
             Article::class,
+            EncryptedArticle::class,
             EnumArticle::class,
             LogEntry::class,
         ];
