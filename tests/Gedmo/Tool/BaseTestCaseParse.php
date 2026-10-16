@@ -74,9 +74,13 @@ abstract class BaseTestCaseParse extends TestCase
      *
      * @param string[] $mappingPaths
      */
-    protected function getDefaultParseObjectManager(?EventManager $evm = null, array $mappingPaths = []): ParseObjectManager
+    /**
+     * @param bool $useLazyGhostObject Use PHP 8.4 native lazy ghosts instead of generated proxies
+     */
+    protected function getDefaultParseObjectManager(?EventManager $evm = null, array $mappingPaths = [], bool $useLazyGhostObject = false): ParseObjectManager
     {
         $config = new Configuration();
+        $config->setUseLazyGhostObject($useLazyGhostObject);
         $config->setAutoGenerateProxyClasses(Configuration::AUTOGENERATE_EVAL);
         $config->setProxyDir(sys_get_temp_dir().'/GedmoParseProxies');
         $config->setProxyNamespace('GedmoParseProxies');

@@ -124,7 +124,7 @@ class Parse extends AdapterParse implements LoggableAdapter
             }
         }
 
-        $changesChecksum = md5(json_encode($changes));
+        $changesChecksum = md5(json_encode($this->normalizeForChecksum($changes)));
 
         if (in_array($changesChecksum, $this->objectChangesTracking[$objectSplId])) {
             // changes already processed
@@ -134,6 +134,41 @@ class Parse extends AdapterParse implements LoggableAdapter
         }
 
         return $changes;
+    }
+
+    /**
+     * Replaces the objects of a change set by scalars identifying them before it is hashed.
+     *
+     * json_encode() of a PHP 8.4 native lazy ghost initializes it, i.e. queries Parse for a
+     * reference only replaced in this change set, and encodes any object without public
+     * property as {}, so that changes differing only by the referenced object got the same
+     * checksum and the later ones were taken as already logged.
+     */
+    private function normalizeForChecksum(mixed $value): mixed
+    {
+        if (\is_array($value)) {
+            return array_map(fn (mixed $item): mixed => $this->normalizeForChecksum($item), $value);
+        }
+        if ($value instanceof BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d\TH:i:s.uP');
+        }
+        if ($value instanceof ParseObject) {
+            return $value->getClassName().'#'.$value->getObjectId();
+        }
+        if (\is_object($value)) {
+            $uow = $this->getObjectManager()->getUnitOfWork();
+            $id = $uow->isInIdentityMap($value) ? $uow->getDocumentIdentifier($value) : null;
+
+            return \get_class($value).'#'.($id ?? 'new-'.spl_object_id($value));
+        }
+
+        return $value;
     }
 
     /**

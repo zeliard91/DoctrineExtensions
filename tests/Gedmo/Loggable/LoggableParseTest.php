@@ -17,6 +17,8 @@ use Doctrine\Common\EventSubscriber;
 use Gedmo\Loggable\LoggableListener;
 use Gedmo\Loggable\ParseObject\LogEntry;
 use Gedmo\Tests\Loggable\Fixture\Parse\Article;
+use Gedmo\Tests\Loggable\Fixture\Parse\CategorizedArticle;
+use Gedmo\Tests\Loggable\Fixture\Parse\Category;
 use Gedmo\Tests\Loggable\Fixture\Parse\EncryptedArticle;
 use Gedmo\Tests\Loggable\Fixture\Parse\EnumArticle;
 use Gedmo\Tests\Loggable\Fixture\Parse\Status;
@@ -394,10 +396,107 @@ final class LoggableParseTest extends BaseTestCaseParse
         static::assertSame('Title', $logged['create']['title']);
     }
 
+    /**
+     * @return iterable<string, array{0: bool}>
+     */
+    public static function proxyModes(): iterable
+    {
+        yield 'generated proxies' => [false];
+        yield 'native lazy ghosts' => [true];
+    }
+
+    /**
+     * Logging a reference change must not load the referenced objects: json_encode() of a
+     * PHP 8.4 native lazy ghost triggers its initialization, which a generated proxy does not.
+     *
+     * @dataProvider proxyModes
+     */
+    public function testReplacingAReferenceDoesNotLoadTheLazyOldValue(bool $useLazyGhostObject): void
+    {
+        $this->useProxyMode($useLazyGhostObject);
+        [$article, $categories] = $this->createCategorizedArticle(['Old', 'New']);
+        $this->om->clear();
+
+        $article = $this->om->find(CategorizedArticle::class, $article->getId());
+        $oldCategory = $article->getCategory();
+        self::assertTrue($this->om->isUninitializedObject($oldCategory), 'The reference is loaded lazily');
+
+        $article->setCategory($this->om->find(Category::class, $categories['New']->getId()));
+        $this->om->flush();
+
+        self::assertTrue($this->om->isUninitializedObject($oldCategory), 'Logging the change must not load the replaced reference');
+
+        $this->om->clear();
+        $log = $this->om->getRepository(LogEntry::class)->findOneBy(['version' => 2, 'objectId' => $article->getId()]);
+        self::assertNotNull($log);
+        self::assertSame('update', $log->getAction());
+        self::assertArrayHasKey('category', $log->getData());
+    }
+
+    /**
+     * Changes differing only by the referenced object used to share the checksum guarding
+     * against logging the same changes twice, so the second one was dropped.
+     *
+     * @dataProvider proxyModes
+     */
+    public function testSuccessiveReferenceChangesAreAllLogged(bool $useLazyGhostObject): void
+    {
+        $this->useProxyMode($useLazyGhostObject);
+        [$article, $categories] = $this->createCategorizedArticle(['First', 'Second', 'Third']);
+
+        $article->setCategory($categories['Second']);
+        $this->om->flush();
+        $article->setCategory($categories['Third']);
+        $this->om->flush();
+        $this->om->clear();
+
+        $logs = $this->om->getRepository(LogEntry::class)->findBy(['objectId' => $article->getId()]);
+        $versions = array_map(static fn (LogEntry $log): int => $log->getVersion(), \is_array($logs) ? $logs : iterator_to_array($logs));
+        sort($versions);
+        self::assertSame([1, 2, 3], $versions, 'The creation and both category changes are logged');
+    }
+
+    private function useProxyMode(bool $useLazyGhostObject): void
+    {
+        if ($useLazyGhostObject && \PHP_VERSION_ID < 80400) {
+            self::markTestSkipped('Native lazy ghosts require PHP 8.4+.');
+        }
+
+        $evm = new EventManager();
+        $evm->addEventSubscriber($this->listener);
+        $this->getDefaultParseObjectManager($evm, [
+            __DIR__.'/Fixture/Parse',
+            \dirname(__DIR__, 3).'/src/Loggable/ParseObject',
+        ], $useLazyGhostObject);
+    }
+
+    /**
+     * @param list<string> $categoryNames the article is created in the first one
+     *
+     * @return array{0: CategorizedArticle, 1: array<string, Category>}
+     */
+    private function createCategorizedArticle(array $categoryNames): array
+    {
+        $categories = [];
+        foreach ($categoryNames as $name) {
+            $categories[$name] = (new Category())->setName($name);
+            $this->om->persist($categories[$name]);
+        }
+        $article = (new CategorizedArticle())
+            ->setTitle('Categorized')
+            ->setCategory($categories[$categoryNames[0]]);
+        $this->om->persist($article);
+        $this->om->flush();
+
+        return [$article, $categories];
+    }
+
     protected function getUsedFixtures(): array
     {
         return [
             Article::class,
+            CategorizedArticle::class,
+            Category::class,
             EncryptedArticle::class,
             EnumArticle::class,
             LogEntry::class,
